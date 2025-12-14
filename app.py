@@ -6,11 +6,9 @@ from typing import List
 def load_dataset(path: str) -> pd.DataFrame:
     df = pd.read_excel(path)
 
-    # Normalize text fields
     df["Location"] = df["Location"].astype(str).str.lower().str.strip()
     df["Sector"] = df["Sector"].astype(str).str.lower().str.strip()
 
-    # Normalize Scholarship (robust handling)
     df["Scholarship"] = df["Scholarship"].apply(
         lambda x: 1 if str(x).strip().lower() in ["yes", "true", "1"] else 0
     )
@@ -57,12 +55,10 @@ def recommend_universities(
     sector: str
 ) -> pd.DataFrame:
 
-    # 1️⃣ Strict subject filtering
     df = filter_by_subjects(df, subjects)
 
     if df.empty:
         return df
-
 
     df = rank_universities(
         df,
@@ -72,27 +68,25 @@ def recommend_universities(
         sector
     )
 
-
     return df[["University", "Location"]].head(4)
 
 
-# ---------------------------
-# FASTAPI APP
-# ---------------------------
 app = FastAPI(title="University Recommendation System")
 
-# Load dataset ONCE at startup
-df = load_dataset("LuminaUniversities.xlsx")
+df = None
 
 
-# ---------------------------
-# FORM-BASED ENDPOINT
-# ---------------------------
+@app.on_event("startup")
+def startup_event():
+    global df
+    df = load_dataset("LuminaUniversities.xlsx")
+
+
 @app.post("/recommend")
 def recommend(
     city: str = Form(...),
     max_fee: int = Form(...),
-    subjects: str = Form(...),   # comma-separated subjects
+    subjects: str = Form(...),
     scholarship_required: bool = Form(...),
     sector: str = Form(...)
 ):
